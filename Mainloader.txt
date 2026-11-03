@@ -6,7 +6,7 @@ local CORE = "https://raw.githubusercontent.com/YOURNAME/aurora-core/main/core.l
 -- EDIT: one line per tab, in the order the tabs should appear
 local TABS = {
     { name = "players", url = "https://raw.githubusercontent.com/YOURNAME/aurora-players/main/players.lua" },
-    { name = "esp",     url = "https://raw.githubusercontent.com/YOURNAME/aurora-esp/main/esp.lua" },
+    { name = "esp",     url = "https://github.com/limechanged-cloud/loader/blob/main/esp" },
     { name = "combat",  url = "https://raw.githubusercontent.com/YOURNAME/aurora-combat/main/combat.lua" },
     { name = "misc",    url = "https://raw.githubusercontent.com/YOURNAME/aurora-misc/main/misc.lua" },
 }

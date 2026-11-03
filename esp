@@ -1,0 +1,266 @@
+return function(A)
+    local Library, ESP, Camera, LP = A.Library, A.ESP, A.Camera, A.LP
+
+    local V = A.Window:Tab("ESP")
+    local Preview = V:AddESPPreview()
+
+    -- Toggle:Set() returns nil; build, attach swatch, then default.
+    local function tog(sec, title, flag, on, colorTitle, colorFlag, color)
+        local t = sec:Toggle({ Title = title, Flag = flag, Callback = function() end })
+        if colorFlag then
+            t:Colorpicker({
+                Title = colorTitle or "Color",
+                Color = color or Color3.fromRGB(255, 255, 255),
+                Flag = colorFlag,
+                Callback = function() end
+            })
+        end
+        if on then t:Set(true) end
+        return t
+    end
+
+    local TrS = V:Section("Tracers", "Left")
+    tog(TrS, "Tracers", "TracerOn", false, "Tracer Color", "TracerColor", Color3.fromRGB(255, 60, 160))
+
+    local posT = {}
+    local function clearPos(keep)
+        for k, t in pairs(posT) do
+            if k ~= keep and t.Toggled then t:Set(false) end
+        end
+    end
+    posT.Top = TrS:Toggle({ Title = "Position: Top", Flag = "PosTop", Callback = function(s)
+        if s then clearPos("Top"); Library.Flags.TracerPos = "Top" end
+    end })
+    posT.Middle = TrS:Toggle({ Title = "Position: Middle", Flag = "PosMid", Callback = function(s)
+        if s then clearPos("Middle"); Library.Flags.TracerPos = "Middle" end
+    end })
+    posT.Bottom = TrS:Toggle({ Title = "Position: Bottom", Flag = "PosBot", Callback = function(s)
+        if s then clearPos("Bottom"); Library.Flags.TracerPos = "Bottom" end
+    end })
+    posT.Bottom:Set(true)
+    Library.Flags.TracerPos = "Bottom"
+
+    TrS:Slider({ Title = "Tracer Thickness", Min = 1, Max = 6, Default = 2, Decimals = 1, Flag = "TracerThick", Callback = function() end })
+
+    local ChS = V:Section("Chams", "Left")
+    tog(ChS, "Chams", "ChamOn", false, "Chams Fill", "ChamFill", Color3.fromRGB(150, 60, 255))
+    ChS:Slider({ Title = "Fill Transparency", Min = 0, Max = 100, Default = 55, Decimals = 1, Flag = "ChamTrans", Callback = function() end })
+    tog(ChS, "Outline", "ChamOutline", false, "Chams Outline", "ChamLine", Color3.fromRGB(255, 60, 160))
+
+    local SkS = V:Section("Skeleton", "Left")
+    tog(SkS, "Skeleton", "SkelOn", false, "Bone Color", "SkelColor", Color3.fromRGB(255, 60, 160))
+    SkS:Slider({ Title = "Bone Thickness", Min = 1, Max = 4, Default = 1, Decimals = 1, Flag = "SkelThick", Callback = function() end })
+
+    local InS = V:Section("Player Info", "Right")
+    tog(InS, "Box", "BoxOn", true, "Box Color", "BoxColor", Color3.fromRGB(255, 60, 160))
+    tog(InS, "Name", "NameOn", true, "Name Color", "NameColor", Color3.fromRGB(255, 255, 255))
+    tog(InS, "Health Bar", "HealthOn", true, "Health Color", "HealthColor", Color3.fromRGB(0, 255, 0))
+    tog(InS, "Health Value", "HealthNum", true, "Health Value Color", "HealthNumColor", Color3.fromRGB(255, 255, 255))
+    tog(InS, "Distance", "DistOn", true, "Distance Color", "DistColor", Color3.fromRGB(255, 255, 255))
+    InS:Toggle({ Title = "Distance Above", Flag = "DistAbove", Callback = function() end })
+    tog(InS, "Avatar Icon", "AvatarOn", false)
+    tog(InS, "Equipped Items", "ItemsOn", false, "Item Color", "ItemsColor", Color3.fromRGB(255, 255, 255))
+    InS:Slider({ Title = "Max Distance", Min = 50, Max = 2000, Default = 1000, Decimals = 1, Flag = "MaxDist", Callback = function() end })
+
+    local FlS = V:Section("Filters", "Right")
+    FlS:Toggle({ Title = "Team Color", Flag = "TeamColor", Callback = function() end })
+    FlS:Toggle({ Title = "Team Check", Flag = "TeamCheck", Callback = function() end })
+    FlS:Colorpicker({ Title = "Enemy Color", Color = Color3.fromRGB(255, 60, 160), Flag = "EnemyColor", Callback = function() end })
+    FlS:Toggle({ Title = "ESP Preview", Flag = "PreviewOn", Callback = function() end })
+
+    --==================== DRAWINGS ====================
+    local function col(plr)
+        if Library.Flags.TeamColor and plr.Team then return plr.Team.TeamColor.Color end
+        return A.C3(Library.Flags.EnemyColor)
+    end
+
+    local function motors(plr, char)
+        if ESP.MotorChar[plr] == char then return ESP.Motor[plr] end
+        local list = {}
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("Motor6D") and v.Part0 and v.Part1 then list[#list + 1] = v end
+        end
+        ESP.MotorChar[plr] = char
+        ESP.Motor[plr] = list
+        return list
+    end
+
+    -- replace with your own resolver once you send it
+    local function getEquipped(char)
+        local out = {}
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("Tool") then out[#out + 1] = v.Name end
+        end
+        return table.concat(out, ", ")
+    end
+
+    local function avatar(plr)
+        if ESP.AV[plr] then return ESP.AV[plr] end
+        local uid = plr.UserId
+        local ok, path = pcall(function()
+            local f = "aurora_av_" .. uid .. ".png"
+            if not isfile(f) then
+                writefile(f, game:HttpGet(("https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=150&height=150&format=png"):format(uid)))
+            end
+            return getcustomasset(f)
+        end)
+        if ok and path then ESP.AV[plr] = path; return path end
+        local ok2, thumb = pcall(function()
+            return A.Players:GetUserThumbnailAsync(uid, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+        end)
+        if ok2 and thumb then ESP.AV[plr] = thumb; return thumb end
+    end
+
+    function A.render(plr)
+        local d = ESP.Draw[plr] or A.mk(plr)
+        local char = plr.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+        if plr == LP or not (hrp and hum and hum.Health > 0) then A.hide(d) return end
+        if Library.Flags.TeamCheck and plr.Team and plr.Team == LP.Team then A.hide(d) return end
+
+        local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+        if dist > (Library.Flags.MaxDist or 1000) then A.hide(d) return end
+
+        local head = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 2.6, 0))
+        local feet = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3.1, 0))
+        if head.Z <= 0 or feet.Z <= 0 then A.hide(d) return end
+
+        local h = math.abs(feet.Y - head.Y)
+        local w = math.max(h * 0.5, 6)
+        local x = head.X - w / 2
+        local top = head.Y
+        local bc = col(plr)
+
+        d.box.Color = A.C3(Library.Flags.BoxColor, bc)
+        d.box.Position = Vector2.new(x, top)
+        d.box.Size = Vector2.new(w, h)
+        d.box.Visible = Library.Flags.BoxOn and true or false
+
+        local vp = Camera.ViewportSize
+        local p = tostring(Library.Flags.TracerPos or "Bottom")
+        d.tracer.From = Vector2.new(vp.X / 2, p == "Top" and 0 or p == "Middle" and vp.Y / 2 or vp.Y)
+        d.tracer.To = Vector2.new(x + w / 2, top + h * 0.5)
+        d.tracer.Color = A.C3(Library.Flags.TracerColor, bc)
+        d.tracer.Thickness = Library.Flags.TracerThick or 2
+        d.tracer.Visible = Library.Flags.TracerOn and true or false
+
+        local maxH = math.max(hum.MaxHealth, 1)
+        local pct = math.clamp(hum.Health / maxH, 0, 1)
+        local barH = h * pct
+        d.hpO.Color = Color3.new(0, 0, 0)
+        d.hpO.Position = Vector2.new(x - 7, top)
+        d.hpO.Size = Vector2.new(4, h)
+        d.hpO.Visible = Library.Flags.HealthOn and true or false
+        d.hp.Color = A.C3(Library.Flags.HealthColor, Color3.fromRGB(0, 255, 0))
+        d.hp.Position = Vector2.new(x - 6, top + (h - barH))
+        d.hp.Size = Vector2.new(2, math.max(barH, 0))
+        d.hp.Visible = d.hpO.Visible
+
+        d.hpText.Text = ("%d"):format(math.ceil(hum.Health))
+        d.hpText.Color = A.C3(Library.Flags.HealthNumColor, Color3.new(1, 1, 1))
+        d.hpText.Position = Vector2.new(x - 5, top - 15)
+        d.hpText.Visible = Library.Flags.HealthNum and true or false
+
+        local avSize = math.max(w * 0.4, 18)
+        local av = Library.Flags.AvatarOn and avatar(plr) or nil
+        if av then
+            d.avatar.Data = av
+            d.avatar.Size = Vector2.new(avSize, avSize)
+            d.avatar.Position = Vector2.new(x, top - avSize - 2)
+            d.avatar.Visible = true
+        else
+            d.avatar.Visible = false
+        end
+
+        d.name.Text = plr.Name
+        d.name.Color = A.C3(Library.Flags.NameColor, Color3.new(1, 1, 1))
+        d.name.Position = Vector2.new(av and (x + avSize + 4) or (x + w / 2), top - 16)
+        d.name.Center = not av
+        d.name.Visible = Library.Flags.NameOn and true or false
+
+        d.dist.Text = ("%dm"):format(math.floor(dist))
+        d.dist.Color = A.C3(Library.Flags.DistColor, Color3.new(1, 1, 1))
+        d.dist.Position = Vector2.new(x + w / 2, Library.Flags.DistAbove and (top - 30) or (top + h + 2))
+        d.dist.Visible = Library.Flags.DistOn and true or false
+
+        local it = getEquipped(char)
+        d.items.Text = it
+        d.items.Color = A.C3(Library.Flags.ItemsColor, Color3.new(1, 1, 1))
+        d.items.Size = 12
+        d.items.Position = Vector2.new(x + w + 4, top + h * 0.4)
+        d.items.Visible = Library.Flags.ItemsOn and it ~= "" or false
+
+        local bones = Library.Flags.SkelOn and motors(plr, char) or {}
+        local bc2 = A.C3(Library.Flags.SkelColor, bc)
+        for i, m in ipairs(bones) do
+            local l = d.skel[i]
+            if not l then
+                l = Drawing.new("Line"); l.ZIndex = 2; l.Visible = false; d.skel[i] = l
+            end
+            local a = Camera:WorldToViewportPoint(m.Part0.Position)
+            local b = Camera:WorldToViewportPoint(m.Part1.Position)
+            l.From = Vector2.new(a.X, a.Y)
+            l.To = Vector2.new(b.X, b.Y)
+            l.Color = bc2
+            l.Thickness = Library.Flags.SkelThick or 1
+            l.Transparency = 1
+            l.Visible = true
+        end
+        for i = #bones + 1, #d.skel do d.skel[i].Visible = false end
+
+        local hl = ESP.Hi[plr]
+        if Library.Flags.ChamOn then
+            if not hl or hl.Parent ~= char then
+                if hl then pcall(function() hl:Destroy() end) end
+                hl = Instance.new("Highlight")
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                hl.Parent = char
+                ESP.Hi[plr] = hl
+            end
+            hl.FillColor = A.C3(Library.Flags.ChamFill)
+            hl.FillTransparency = 1 - ((Library.Flags.ChamTrans or 55) / 100)
+            hl.OutlineColor = A.C3(Library.Flags.ChamLine, bc)
+            hl.OutlineTransparency = Library.Flags.ChamOutline and 0 or 1
+        elseif hl then
+            pcall(function() hl:Destroy() end)
+            ESP.Hi[plr] = nil
+        end
+    end
+
+    --==================== PREVIEW ====================
+    local function syncPreview()
+        local on = Library.Flags.PreviewOn and true or false
+        local c = A.C3(Library.Flags.EnemyColor)
+        Preview:UpdateName(on and Library.Flags.NameOn, c)
+        Preview:UpdateBoundingBox(on and Library.Flags.BoxOn, c)
+        Preview:UpdateDistance(on and Library.Flags.DistOn, c)
+        Preview:UpdateWeapon(on and Library.Flags.ItemsOn, c)
+        Preview:UpdateHealthBar(on and Library.Flags.HealthOn, Color3.fromRGB(0, 255, 0), { Health = 100, MaxHealth = 100 })
+    end
+
+    --==================== LOOP ====================
+    A.Conn[#A.Conn + 1] = A.RunService.RenderStepped:Connect(function()
+        for _, plr in ipairs(A.Players:GetPlayers()) do
+            local ok = pcall(A.render, plr)
+            if not ok then A.hide(ESP.Draw[plr]) end
+        end
+        pcall(syncPreview)
+    end)
+
+    A.Conn[#A.Conn + 1] = A.Players.PlayerRemoving:Connect(function(plr)
+        local d = ESP.Draw[plr]
+        if d then
+            for _, v in pairs(d) do
+                if type(v) == "table" then
+                    for _, l in pairs(v) do pcall(function() l:Remove() end) end
+                else
+                    pcall(function() v:Remove() end)
+                end
+            end
+        end
+        ESP.Draw[plr] = nil; ESP.Motor[plr] = nil; ESP.MotorChar[plr] = nil; ESP.AV[plr] = nil
+        if ESP.Hi[plr] then pcall(function() ESP.Hi[plr]:Destroy() end); ESP.Hi[plr] = nil end
+    end)
+end

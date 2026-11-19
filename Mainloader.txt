@@ -1,57 +1,50 @@
---[[ aurora loader ]]
-
--- EDIT: your core repo
-local CORE = "https://raw.githubusercontent.com/YOURNAME/aurora-core/main/core.lua"
-
--- EDIT: one line per tab, in the order the tabs should appear
-local TABS = {
-    { name = "players", url = "https://raw.githubusercontent.com/YOURNAME/aurora-players/main/players.lua" },
-    { name = "esp",     url = "https://github.com/limechanged-cloud/loader/blob/main/esp" },
-    { name = "combat",  url = "https://raw.githubusercontent.com/YOURNAME/aurora-combat/main/combat.lua" },
-    { name = "misc",    url = "https://raw.githubusercontent.com/YOURNAME/aurora-misc/main/misc.lua" },
-}
-
-local function fetch(url)
-    local chunk = game:HttpGet(url)
-    if chunk == "" or chunk:find("^404") then error("empty response") end
-    local fn = loadstring(chunk)
-    if type(fn) ~= "function" then error("chunk did not compile") end
-    return fn
-end
-
-local A = { Tabs = {} }
-
-local ok, err = pcall(function()
-    fetch(CORE)(A)
-end)
-if not ok or not A.Library then
-    return warn("[aurora] core failed: " .. tostring(err))
-end
-
-A.Window = A.Library.Window("aurora 1.0", Vector2.new(600, 462))
-
-for _, t in ipairs(TABS) do
-    local built = pcall(function()
-        fetch(t.url)(A)
-    end)
-    if built then
-        A.Tabs[#A.Tabs + 1] = t.name
-    else
-        warn("[aurora] '" .. t.name .. "' failed to load")
-    end
-end
-
-A.Window:AddSettingsTab(function()
-    if A.Unload then A.Unload() end
-end)
-
-task.spawn(function()
-    task.wait(0.35)
-    pcall(function()
-        A.Window.LastTab = nil
-        for _, tab in ipairs(A.Window.Tabs) do tab:Install() end
-    end)
-end)
-
-A.Window.Watermark("aurora 1.0")
-A.Window.SendNotification("Normal", ("aurora 1.0 | %d parts"):format(#A.Tabs), 4)
+1. bro who taught you how to operate a keyboard
+2. im genuinely impressed by how confidently you get everything wrong
+3. please take a moment to reconsider your entire strategy
+4. did your brain disconnect from the server
+5. ive seen loading screens make better decisions
+6. you really woke up and decided that was the move
+7. respectfully, what are you even doing
+8. i think you need to restart your character
+9. that was certainly one of the decisions of all time
+10. are we playing the same game or are you visiting from another dimension
+11. my disappointment has reached maximum capacity
+12. bro is fighting for last place
+13. please stop cooking, the kitchen is already on fire
+14. ive lost approximately 47 brain cells watching that
+15. your strategy needs a little more strategy
+16. i would explain it again but i left my crayons at home
+17. that was an impressive demonstration of absolutely nothing
+18. bro has the awareness of a disconnected controller
+19. can we please return to the original objective
+20. i refuse to believe that was intentional
+21. congratulations, you have confused the entire lobby
+22. even the tutorial is disappointed
+23. are you allergic to making sense
+24. ive never seen someone work so hard to accomplish so little
+25. bro is playing with the monitor turned off
+26. that decision needs to be studied by professionals
+27. please put the keyboard down and think about what happened
+28. you have officially exhausted my patience
+29. i expected nothing and somehow im still surprised
+30. your logic just left the building
+31. im going to need a moment to process whatever that was
+32. bro is running on a free trial of common sense
+33. that was genuinely painful to witness
+34. can you please stop making this more complicated than it needs to be
+35. i think the game would like its player back
+36. your performance has left me speechless, and not in a good way
+37. ive seen NPCs with better situational awareness
+38. please explain your thought process because im fascinated
+39. that was the most unnecessary thing ive witnessed today
+40. my patience is currently buffering
+41. bro managed to disappoint the entire scoreboard
+42. i think we need to schedule a meeting about your decisions
+43. respectfully, please reconsider your next 14 actions
+44. that was certainly not part of the plan
+45. i need you to understand how confusing that just was
+46. you are making this experience significantly more complicated
+47. even my loading screen is moving faster than your thought process
+48. i cannot believe i just witnessed that with my own eyes
+49. please return the brain cells you borrowed from the lobby
+50. im officially requesting a refund on this interaction
